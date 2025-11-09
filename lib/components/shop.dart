@@ -3,6 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'game.dart';
 
+// Enum para categorizar los tipos de items del inventario
+enum ItemType {
+  shots,      // Tiros y Vidas
+  speed,       // Velocidad y Movimiento
+  damage,      // Daño y Destrucción
+  score,       // Puntos y Score
+  special,     // Especiales
+}
+
 // Clase para representar un item de la tienda
 class ShopItem {
   final String id;
@@ -11,6 +20,7 @@ class ShopItem {
   final int price;
   final IconData icon;
   final Color color;
+  final ItemType type;
   int quantity;
 
   ShopItem({
@@ -20,6 +30,7 @@ class ShopItem {
     required this.price,
     required this.icon,
     required this.color,
+    required this.type,
     this.quantity = 0,
   });
 }
@@ -40,6 +51,7 @@ class ShopManager {
       price: 30,
       icon: Icons.add_circle,
       color: Colors.blue,
+      type: ItemType.shots,
     );
 
     items['extra_life'] = ShopItem(
@@ -49,6 +61,7 @@ class ShopManager {
       price: 50,
       icon: Icons.favorite,
       color: Colors.pink,
+      type: ItemType.shots,
     );
 
     items['mega_shots'] = ShopItem(
@@ -58,6 +71,7 @@ class ShopManager {
       price: 80,
       icon: Icons.all_inclusive,
       color: Colors.blue.shade700,
+      type: ItemType.shots,
     );
 
     // CATEGORÍA: VELOCIDAD Y MOVIMIENTO
@@ -68,6 +82,7 @@ class ShopManager {
       price: 25,
       icon: Icons.speed,
       color: Colors.orange,
+      type: ItemType.speed,
     );
 
     items['super_speed'] = ShopItem(
@@ -77,6 +92,7 @@ class ShopManager {
       price: 60,
       icon: Icons.rocket_launch,
       color: Colors.deepOrange,
+      type: ItemType.speed,
     );
 
     // CATEGORÍA: DAÑO Y DESTRUCCIÓN
@@ -87,6 +103,7 @@ class ShopManager {
       price: 35,
       icon: Icons.whatshot,
       color: Colors.red,
+      type: ItemType.damage,
     );
 
     items['mega_damage'] = ShopItem(
@@ -96,6 +113,7 @@ class ShopManager {
       price: 70,
       icon: Icons.bolt,
       color: Colors.red.shade900,
+      type: ItemType.damage,
     );
 
     // CATEGORÍA: PUNTOS Y SCORE
@@ -106,6 +124,7 @@ class ShopManager {
       price: 40,
       icon: Icons.star,
       color: Colors.yellow,
+      type: ItemType.score,
     );
 
     items['mega_score'] = ShopItem(
@@ -115,6 +134,7 @@ class ShopManager {
       price: 90,
       icon: Icons.stars,
       color: Colors.amber,
+      type: ItemType.score,
     );
 
     // CATEGORÍA: ESPECIALES
@@ -125,6 +145,7 @@ class ShopManager {
       price: 45,
       icon: Icons.shield,
       color: Colors.cyan,
+      type: ItemType.special,
     );
 
     items['magnet'] = ShopItem(
@@ -134,6 +155,7 @@ class ShopManager {
       price: 55,
       icon: Icons.attach_money,
       color: Colors.purple,
+      type: ItemType.special,
     );
 
     items['freeze'] = ShopItem(
@@ -143,6 +165,7 @@ class ShopManager {
       price: 65,
       icon: Icons.ac_unit,
       color: Colors.lightBlue,
+      type: ItemType.special,
     );
 
     items['explosive'] = ShopItem(
@@ -152,6 +175,7 @@ class ShopManager {
       price: 75,
       icon: Icons.dangerous,
       color: Colors.orange.shade900,
+      type: ItemType.special,
     );
 
     items['combo_pack'] = ShopItem(
@@ -161,6 +185,7 @@ class ShopManager {
       price: 120,
       icon: Icons.card_giftcard,
       color: Colors.indigo,
+      type: ItemType.special,
     );
   }
 
@@ -256,6 +281,33 @@ class ShopManager {
     for (var item in items.values) {
       item.quantity = 0;
     }
+  }
+
+  // Obtener items disponibles en el inventario (con cantidad > 0)
+  List<ShopItem> getInventoryItems() {
+    return items.values.where((item) => item.quantity > 0).toList();
+  }
+
+  // Obtener items del inventario filtrados por tipo
+  List<ShopItem> getInventoryItemsByType(ItemType type) {
+    return items.values
+        .where((item) => item.quantity > 0 && item.type == type)
+        .toList();
+  }
+
+  // Obtener todos los items de un tipo específico (sin importar cantidad)
+  List<ShopItem> getItemsByType(ItemType type) {
+    return items.values.where((item) => item.type == type).toList();
+  }
+
+  // Usar un item del inventario (reducir cantidad en 1)
+  bool useItem(String itemId) {
+    final item = items[itemId];
+    if (item != null && item.quantity > 0) {
+      item.quantity--;
+      return true;
+    }
+    return false;
   }
 }
 

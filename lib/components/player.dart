@@ -48,7 +48,7 @@ class Player extends BodyComponentWithUserData with DragCallbacks, ContactCallba
   final Vector2 initialPosition;
   final bool showAimingArrow;
   final VoidCallback? onShot;
-  final double speedMultiplier;
+  double speedMultiplier;
   bool _shouldReturn = false;
 
   @override

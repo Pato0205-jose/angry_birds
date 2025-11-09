@@ -68,19 +68,71 @@ class _GameWrapperState extends State<_GameWrapper> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: GameWidget.controlled(
-        gameFactory: () => _game!,
-        overlayBuilderMap: {
-          'dialog': (context, game) {
-            return _SaveScoreDialog(
-              game: game as MyPhysicsGame,
-              onReturnToShop: _returnToShop,
-            );
-          },
-        },
-      ),
-    );
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            GameWidget.controlled(
+              gameFactory: () => _game!,
+              overlayBuilderMap: {
+                'dialog': (context, game) {
+                  return _SaveScoreDialog(
+                    game: game as MyPhysicsGame,
+                    onReturnToShop: _returnToShop,
+                  );
+                },
+                'inventory': (context, game) {
+                  return _InventoryOverlay(
+                    game: game as MyPhysicsGame,
+                  );
+                },
+              },
+            ),
+            // Botón de inventario flotante
+            Positioned(
+              top: 10,
+              left: 10,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    _game?.overlays.add('inventory');
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade700,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.inventory_2, color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'INVENTARIO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
   }
 }
 
@@ -210,10 +262,10 @@ class _SaveScoreDialogState extends State<_SaveScoreDialog> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () async {
+                onPressed: () async {
                         if (_textController.text.isNotEmpty) {
                           try {
-                            await widget.game.saveScore(_textController.text);
+                  await widget.game.saveScore(_textController.text);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -286,7 +338,7 @@ class _SaveScoreDialogState extends State<_SaveScoreDialog> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          widget.game.overlays.remove('dialog');
+                  widget.game.overlays.remove('dialog');
                           widget.onReturnToShop!();
                         },
                         icon: Icon(Icons.shopping_cart),
@@ -305,6 +357,239 @@ class _SaveScoreDialogState extends State<_SaveScoreDialog> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// Widget del inventario durante el juego
+class _InventoryOverlay extends StatefulWidget {
+  final MyPhysicsGame game;
+
+  const _InventoryOverlay({
+    required this.game,
+  });
+
+  @override
+  State<_InventoryOverlay> createState() => _InventoryOverlayState();
+}
+
+class _InventoryOverlayState extends State<_InventoryOverlay> {
+  @override
+  Widget build(BuildContext context) {
+    final shopManager = widget.game.shopManager;
+    if (shopManager == null) {
+      return SizedBox.shrink();
+    }
+
+    final inventoryItems = shopManager.getInventoryItems();
+
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          width: 600,
+          constraints: BoxConstraints(maxHeight: 500),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.blue.shade400, width: 2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    topRight: Radius.circular(18),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.inventory_2, color: Colors.white, size: 28),
+                        SizedBox(width: 12),
+                        Text(
+                          'INVENTARIO',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () {
+                        widget.game.overlays.remove('inventory');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Lista de items
+              Flexible(
+                child: inventoryItems.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 64,
+                              color: Colors.grey.shade600,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No tienes items en el inventario',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Compra items en la tienda antes de jugar',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        shrinkWrap: true,
+                        itemCount: inventoryItems.length,
+                        itemBuilder: (context, index) {
+                          final item = inventoryItems[index];
+                          return _InventoryItemCard(
+                            item: item,
+                            onUse: () {
+                              if (widget.game.useItem(item.id)) {
+                                setState(() {});
+                                widget.game.overlays.remove('inventory');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('${item.name} usado'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InventoryItemCard extends StatelessWidget {
+  final ShopItem item;
+  final VoidCallback onUse;
+
+  const _InventoryItemCard({
+    required this.item,
+    required this.onUse,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 12),
+      color: Colors.grey.shade800,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Icono
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: item.color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                item.icon,
+                color: item.color,
+                size: 32,
+              ),
+            ),
+            SizedBox(width: 16),
+            
+            // Información
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    item.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade300,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade700,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Cantidad: ${item.quantity}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Botón usar
+            SizedBox(width: 12),
+            ElevatedButton.icon(
+              onPressed: item.quantity > 0 ? onUse : null,
+              icon: Icon(Icons.play_arrow),
+              label: Text('USAR'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: item.color,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

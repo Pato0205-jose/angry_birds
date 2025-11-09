@@ -27,29 +27,94 @@ class MyPhysicsGame extends Forge2DGame {
   final ShopManager? shopManager;
   final LevelType levelType;
   int _maxShots = 10;
+  
+  // Multiplicadores base (sin items)
+  double _basePlayerSpeedMultiplier = 1.0;
+  double _baseDamageMultiplier = 1.0;
+  int _baseScoreMultiplier = 1;
+  
+  // Multiplicadores activos (pueden cambiar cuando se usan items)
   double _playerSpeedMultiplier = 1.0;
   double _damageMultiplier = 1.0;
   int _scoreMultiplier = 1;
+  
+  // Efectos activos para el siguiente tiro
+  bool _nextShotHasSpeedBoost = false;
+  bool _nextShotHasDamageBoost = false;
+  bool _nextShotHasScoreBoost = false;
 
   MyPhysicsGame({this.shopManager, this.levelType = LevelType.normal})
     : super(
         gravity: Vector2(0, 10),
       ) {
-    // Aplicar items de la tienda
-    if (shopManager != null) {
-      _maxShots = 10 + shopManager!.getTotalExtraShots();
-      
-      // Si tiene combo pack, aplicar todos los beneficios
-      if (shopManager!.hasComboPack()) {
+    // NO aplicar items automáticamente - se usarán manualmente durante el juego
+    _basePlayerSpeedMultiplier = 1.0;
+    _baseDamageMultiplier = 1.0;
+    _baseScoreMultiplier = 1;
+    _playerSpeedMultiplier = 1.0;
+    _damageMultiplier = 1.0;
+    _scoreMultiplier = 1;
+  }
+  
+  // Método para usar un item del inventario
+  bool useItem(String itemId) {
+    if (shopManager == null) return false;
+    
+    final item = shopManager!.items[itemId];
+    if (item == null || item.quantity <= 0) return false;
+    
+    // Consumir el item
+    item.quantity--;
+    
+    // Aplicar el efecto del item para el siguiente tiro
+    switch (itemId) {
+      case 'speed_boost':
+        _nextShotHasSpeedBoost = true;
+        _playerSpeedMultiplier = 1.5;
+        // Actualizar el multiplicador del jugador actual si existe
+        if (_currentPlayer != null) {
+          _currentPlayer!.speedMultiplier = _playerSpeedMultiplier;
+        }
+        break;
+      case 'super_speed':
+        _nextShotHasSpeedBoost = true;
+        _playerSpeedMultiplier = 2.0;
+        // Actualizar el multiplicador del jugador actual si existe
+        if (_currentPlayer != null) {
+          _currentPlayer!.speedMultiplier = _playerSpeedMultiplier;
+        }
+        break;
+      case 'damage_boost':
+        _nextShotHasDamageBoost = true;
+        _damageMultiplier = 2.0;
+        break;
+      case 'mega_damage':
+        _nextShotHasDamageBoost = true;
+        _damageMultiplier = 3.0;
+        break;
+      case 'score_multiplier':
+        _nextShotHasScoreBoost = true;
+        _scoreMultiplier = 2;
+        break;
+      case 'mega_score':
+        _nextShotHasScoreBoost = true;
+        _scoreMultiplier = 3;
+        break;
+      case 'combo_pack':
+        _nextShotHasSpeedBoost = true;
+        _nextShotHasDamageBoost = true;
+        _nextShotHasScoreBoost = true;
         _playerSpeedMultiplier = 1.5;
         _damageMultiplier = 2.0;
         _scoreMultiplier = 2;
-      } else {
-        _playerSpeedMultiplier = shopManager!.getSpeedMultiplier();
-        _damageMultiplier = shopManager!.getDamageMultiplier();
-        _scoreMultiplier = shopManager!.getScoreMultiplier();
-      }
+        // Actualizar el multiplicador del jugador actual si existe
+        if (_currentPlayer != null) {
+          _currentPlayer!.speedMultiplier = _playerSpeedMultiplier;
+        }
+        break;
     }
+    
+    return true;
   }
 
   late final XmlSpriteSheet aliens;
@@ -67,6 +132,7 @@ class MyPhysicsGame extends Forge2DGame {
   bool _gameEnded = false;
   bool _firstShot = true;
   bool _playerWon = false;
+  Player? _currentPlayer;
 
   int get score => _score;
   bool get playerWon => _playerWon;
@@ -247,29 +313,46 @@ class MyPhysicsGame extends Forge2DGame {
   
   Future<void> addPlayer() async {
     _playerInitialPosition = Vector2(camera.visibleWorldRect.left * 2 / 3, 0);
-    return world.add(
-      Player(
-        _playerInitialPosition!,
-        aliens.getSprite(PlayerColor.randomColor.fileName),
-        initialPosition: _playerInitialPosition!,
-        showAimingArrow: true,
-        onShot: () {
-          _shotCounter++;
-          _shotCounterText.text = 'Disparos: $_shotCounter/$_maxShots';
-          _firstShot = false;
-          
-          // Verificar inmediatamente si se alcanzó o excedió el límite de tiros
-          if (_shotCounter >= _maxShots && !_gameEnded) {
-            _gameEnded = true;
-            _playerWon = false;
-            _backgroundMusicPlayer.stop();
-            _gameOverMusicPlayer.play(AssetSource('audio/game_over.mp3'));
-            overlays.add('dialog');
+    _currentPlayer = Player(
+      _playerInitialPosition!,
+      aliens.getSprite(PlayerColor.randomColor.fileName),
+      initialPosition: _playerInitialPosition!,
+      showAimingArrow: true,
+      onShot: () {
+        _shotCounter++;
+        _shotCounterText.text = 'Disparos: $_shotCounter/$_maxShots';
+        _firstShot = false;
+        
+        // Desactivar efectos del item después del tiro
+        if (_nextShotHasSpeedBoost) {
+          _nextShotHasSpeedBoost = false;
+          _playerSpeedMultiplier = _basePlayerSpeedMultiplier;
+          // Actualizar el multiplicador del jugador actual
+          if (_currentPlayer != null) {
+            _currentPlayer!.speedMultiplier = _playerSpeedMultiplier;
           }
-        },
-        speedMultiplier: _playerSpeedMultiplier,
-      ),
+        }
+        if (_nextShotHasDamageBoost) {
+          _nextShotHasDamageBoost = false;
+          _damageMultiplier = _baseDamageMultiplier;
+        }
+        if (_nextShotHasScoreBoost) {
+          _nextShotHasScoreBoost = false;
+          _scoreMultiplier = _baseScoreMultiplier;
+        }
+        
+        // Verificar inmediatamente si se alcanzó o excedió el límite de tiros
+        if (_shotCounter >= _maxShots && !_gameEnded) {
+          _gameEnded = true;
+          _playerWon = false;
+          _backgroundMusicPlayer.stop();
+          _gameOverMusicPlayer.play(AssetSource('audio/game_over.mp3'));
+          overlays.add('dialog');
+        }
+      },
+      speedMultiplier: _playerSpeedMultiplier,
     );
+    return world.add(_currentPlayer!);
   }
 
   @override
@@ -401,6 +484,15 @@ class MyPhysicsGame extends Forge2DGame {
     _firstShot = true;
     _playerWon = false;
     enemiesFullyAdded = false;
+    
+    // Resetear efectos de items
+    _nextShotHasSpeedBoost = false;
+    _nextShotHasDamageBoost = false;
+    _nextShotHasScoreBoost = false;
+    _playerSpeedMultiplier = _basePlayerSpeedMultiplier;
+    _damageMultiplier = _baseDamageMultiplier;
+    _scoreMultiplier = _baseScoreMultiplier;
+    _currentPlayer = null;
     
     // Actualizar textos
     _scoreText.text = 'Score: 0';
