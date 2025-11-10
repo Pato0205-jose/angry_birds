@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -314,12 +316,12 @@ class ShopManager {
 // Widget de la tienda
 class ShopScreen extends StatefulWidget {
   final ShopManager shopManager;
-  final Function(LevelType) onStartGame;
+  final VoidCallback? onBackToMenu;
 
   const ShopScreen({
     Key? key,
     required this.shopManager,
-    required this.onStartGame,
+    this.onBackToMenu,
   }) : super(key: key);
 
   @override
@@ -330,52 +332,68 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black87,
+      backgroundColor: Color(0xFF0A0E27),
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.purple.shade900,
-              Colors.blue.shade900,
+              Color(0xFF0A0E27), // Azul muy oscuro
+              Color(0xFF1A1F3A),
+              Color(0xFF0A0E27),
             ],
           ),
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
+        child: Stack(
+          children: [
+            // Fondo espacial con estrellas
+            _SpaceBackground(),
+            // Contenido de la tienda
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
                 // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        Text(
-                          'TIENDA',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 10,
-                                color: Colors.black,
-                                offset: Offset(2, 2),
+                        if (widget.onBackToMenu != null)
+                          IconButton(
+                            icon: Icon(Icons.arrow_back, color: Colors.white),
+                            onPressed: widget.onBackToMenu,
+                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TIENDA',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 10,
+                                    color: Colors.black,
+                                    offset: Offset(2, 2),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Compra items para mejorar tu juego',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Compra items para mejorar tu juego',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -482,68 +500,11 @@ class _ShopScreenState extends State<ShopScreen> {
                     ),
                   ),
                 ),
-                
-                SizedBox(height: 16),
-                
-                // Botones de iniciar juego
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 60,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            widget.onStartGame(LevelType.normal);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 8,
-                          ),
-                          child: Text(
-                            'NIVEL NORMAL',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: SizedBox(
-                        height: 60,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            widget.onStartGame(LevelType.bigBoss);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade700,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 8,
-                          ),
-                          child: Text(
-                            'BIG BOSS',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -553,18 +514,23 @@ class _ShopScreenState extends State<ShopScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => PaymentDialog(
-        item: item,
-        shopManager: widget.shopManager,
-        onPaymentSuccess: (receiptData) {
-          Navigator.of(context).pop();
-          setState(() {});
-          // Mostrar recibo
-          _showReceipt(context, receiptData);
-        },
-        onPaymentCancel: () {
-          Navigator.of(context).pop();
-        },
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          viewInsets: MediaQuery.of(context).viewInsets,
+        ),
+        child: PaymentDialog(
+          item: item,
+          shopManager: widget.shopManager,
+          onPaymentSuccess: (receiptData) {
+            Navigator.of(context).pop();
+            setState(() {});
+            // Mostrar recibo
+            _showReceipt(context, receiptData);
+          },
+          onPaymentCancel: () {
+            Navigator.of(context).pop();
+          },
+        ),
       ),
     );
   }
@@ -907,12 +873,25 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+    final screenHeight = mediaQuery.size.height;
+    final availableHeight = screenHeight - keyboardHeight - 32;
+    
     return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: keyboardHeight > 0 ? 8 : 24,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
-        padding: EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxHeight: availableHeight,
+          maxWidth: 500,
+        ),
+        padding: EdgeInsets.all(keyboardHeight > 0 ? 16 : 20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -927,6 +906,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -952,19 +932,19 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 Text(
                   'Item: ${widget.item.name}',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     color: Colors.white70,
                   ),
                 ),
                 Text(
                   'Precio: \$${widget.item.price}',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.amber,
                   ),
                 ),
-                SizedBox(height: 24),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _cardNumberController,
                   decoration: InputDecoration(
@@ -1006,7 +986,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     return null;
                   },
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 12),
                 TextFormField(
                   controller: _cardHolderController,
                   decoration: InputDecoration(
@@ -1037,7 +1017,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     return null;
                   },
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -1123,7 +1103,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     ),
                   ],
                 ),
-                SizedBox(height: 24),
+                SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
@@ -1391,5 +1371,51 @@ class _ReceiptRow extends StatelessWidget {
       ],
     );
   }
+}
+
+// Fondo espacial con estrellas para la tienda
+class _SpaceBackground extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _SpacePainter(),
+      child: Container(),
+    );
+  }
+}
+
+class _SpacePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.6)
+      ..style = PaintingStyle.fill;
+
+    // Dibujar estrellas
+    final random = Random(42);
+    for (int i = 0; i < 100; i++) {
+      final x = random.nextDouble() * size.width;
+      final y = random.nextDouble() * size.height;
+      final radius = random.nextDouble() * 1.5 + 0.5;
+      canvas.drawCircle(Offset(x, y), radius, paint);
+    }
+
+    // Líneas horizontales sutiles
+    final linePaint = Paint()
+      ..color = Colors.blue.withOpacity(0.1)
+      ..strokeWidth = 1;
+    
+    for (int i = 0; i < 10; i++) {
+      final y = (size.height / 10) * i;
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width, y),
+        linePaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
